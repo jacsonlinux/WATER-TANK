@@ -7,18 +7,18 @@
 #define SSID "sua_rede_wifi"
 #define WIFI_PASSWORD "sua_senha_wifi"
 
-// Favor trocar os valores de acordo com seu reservatorio
+//Trocar os valores de acordo com seu reservatório
 #define DT 75 //Distancia(cm) entre o sensor e o fundo do reservatório
 #define DS 5 //Distancia(cm) entre o sensor e o nível máximo em que a água pode chegar;
 
-#define ECHO_PIN 4
-#define TRIG_PIN 5
+#define ECHO_PIN 5 //D1
+#define TRIG_PIN 4 //D2
 
-#define TOKEN ""
+#define TOKEN "..."
 
-int distancia_atual = 0;
+float distancia_real;
 
-int nivel_atual = 0;
+int nivel_atual;
 
 Ultrasonic ultrasonic(TRIG_PIN, ECHO_PIN);
 
@@ -31,8 +31,10 @@ unsigned long lastSend;
 PubSubClient client(wifiClient);
 
 void readSensorUltrasonic() {
-  distancia_atual = ultrasonic.read();
-  nivel_atual = ((DT - DS - distancia_atual) / (DT - DS)) * 100;
+  distancia_real = DT - ultrasonic.read();
+  nivel_atual = distancia_real / (DT - DS) * 100;
+  Serial.println(nivel_atual);
+  delay(1000);
 }
 
 void reconnect() {
@@ -84,27 +86,23 @@ void publishData() {
   char attributes[100];
   payload.toCharArray( attributes, 100 );
   client.publish( "v1/devices/me/telemetry", attributes );
-  Serial.println( attributes );
 }
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   WiFi.mode(WIFI_STA);
   setupWiFi();
   mqttConnect();
 }
 
 void loop() {
-
+  readSensorUltrasonic();
   if ( !client.connected() ) {
     reconnect();
   }
 
   if ( millis() - lastSend > 1000 ) {
     readSensorUltrasonic();
-    while (nivel_atual > DT) {
-      readSensorUltrasonic();
-    }
     publishData();
     lastSend = millis();
   }
